@@ -49,12 +49,6 @@ docker pull qdrant/qdrant
 docker run -p 6333:6333 -v $(pwd)/qdrant_storage:/qdrant/storage qdrant/qdrant
 ```
 
-<<<<<<< HEAD
-- Windows CMD & PowerShell:
-=======
-- Windows CMD hoặc PowerShell:
->>>>>>> 8a6a3cefc7456b76739f16462a9b464db54540b6
-
 CMD
 
 ```bash

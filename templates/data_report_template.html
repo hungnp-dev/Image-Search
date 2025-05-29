@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BÁO CÁO PHÂN TÍCH DỮ LIỆU KHÁM PHÁ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        img {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+        }
+        .container {
+            width: 95%;
+            margin: auto;
+            overflow: hidden;
+        }
+        .plot {
+            margin: 20px 0;
+            display: inline-flex;
+            flex-wrap: wrap;
+        }
+        h1 {
+            text-transform: uppercase;
+            font-weight: bold;
+            text-align: center;
+        }
+        h2 {
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        p {
+            text-align: justify;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BÁO CÁO PHÂN TÍCH DỮ LIỆU KHÁM PHÁ</h1>
+        <p>Tập dữ liệu bao gồm {{ nr_imgs }} hình ảnh.</p>
+        <p>Độ phân giải cao nhất trong tập dữ liệu là {{ high_res }}.</p>
+        <p>Độ phân giải thấp nhất trong tập dữ liệu là {{ low_res }}.</p>
+        {% for plot_path in plot_paths %}
+        <div class="plot">
+            <img src="{{ plot_path }}" alt="Biểu đồ phân tích">
+        </div>
+        {% endfor %}
+        <h2>MINH HỌA HÌNH ẢNH MẪU</h2>
+        <p>Dưới đây là 5 hình ảnh ngẫu nhiên được chọn từ tập dữ liệu:</p>
+        <div class="plot">
+            <img src="{{ images }}" width="500" height="300" alt="Mẫu hình ảnh">
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TÌM KIẾM HÌNH ẢNH BẰNG VĂN BẢN</title>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #f0f0f0;
+        font-family: Arial, sans-serif;
+      }
+
+      h1 {
+        text-transform: uppercase;
+        font-weight: bold;
+        text-align: center;
+        margin-top: 20px;
+        color: #007bff;
+      }
+
+      form {
+        margin-top: 20px;
+        padding: 30px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        width: 90%;
+        max-width: 500px;
+      }
+
+      input[type="text"],
+      input[type="submit"] {
+        padding: 15px;
+        border-radius: 5px;
+        border: 2px solid #ccc;
+        font-size: 18px;
+      }
+
+      input[type="text"] {
+        border-color: #007bff;
+        width: 90%;
+      }
+
+      input[type="submit"] {
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+        border: none;
+        width: 100%;
+        text-transform: uppercase;
+        font-weight: bold;
+      }
+
+      input[type="submit"]:hover {
+        background-color: #0056b3;
+      }
+      
+      .container {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 20px;
+        justify-content: center;
+        width: 95%;
+        margin: 20px auto;
+        overflow: hidden;
+      }
+
+      h2 {
+        width: 100%;
+        text-align: center;
+        text-transform: uppercase;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .img {
+        flex: 0 1 auto;
+        width: calc(33.333% - 20px);
+        display: flex;
+        justify-content: center;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        border-radius: 5px;
+        overflow: hidden;
+        background-color: white;
+        padding: 5px;
+      }
+
+      img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TÌM KIẾM HÌNH ẢNH BẰNG VĂN BẢN</h1>
+    <form action="/api/search" method="post">
+      <input
+        type="text"
+        id="text"
+        name="text"
+        required
+        placeholder="Nhập từ khóa tìm kiếm"
+      />
+      <input type="submit" value="TÌM KIẾM" />
+    </form>
+    <div class="container">
+      {% if names %}
+      <h2>KẾT QUẢ TÌM KIẾM</h2>
+      {% for name in names %}
+      <div class="img">
+        <img src="{{ url_for('images', path=name) }}" alt="Hình ảnh kết quả" />
+      </div>
+      {% endfor %}
+      {% else %}
+      <h2>KHÔNG CÓ KẾT QUẢ PHÙ HỢP</h2>
+      {% endif %}
+    </div>
+  </body>
+</html>

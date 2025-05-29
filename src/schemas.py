@@ -1,10 +1,9 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, validator
 
 class SearchText(BaseModel):
     text: str
 
-    @field_validator('text')
-    @classmethod
+    @validator('text')
     def check_text(cls, v: str) -> str:
         res = v.strip() and all(c.isalpha() or c.isspace() for c in v)
         

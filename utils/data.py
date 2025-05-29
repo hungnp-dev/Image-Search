@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from jinja2 import Environment, FileSystemLoader
 from .utils import build_image_embeddings, update_db_collection, download_and_extract, specs
+from .path_utils import join_paths, ensure_dir, normalize_path
 
 class Preparator:
     def __init__(self,
@@ -18,8 +19,8 @@ class Preparator:
                  m: int = 16,
                  ef_construct: int = 100
                  ):
-        self.imgs_path = imgs_path
-        self.docs_path = docs_path
+        self.imgs_path = normalize_path(imgs_path)
+        self.docs_path = normalize_path(docs_path)
         self.collection_name = collection_name
         self.m = m
         self.ef_construct = ef_construct
@@ -42,8 +43,7 @@ class Preparator:
         urls = ['https://storage.googleapis.com/ads-dataset/subfolder-0.zip',
                 'https://storage.googleapis.com/ads-dataset/subfolder-1.zip']
 
-        if not os.path.exists(self.imgs_path):
-            os.makedirs(self.imgs_path)
+        ensure_dir(self.imgs_path)
 
         print("Đang tải dữ liệu...")
         for url in tqdm(urls):
@@ -52,18 +52,17 @@ class Preparator:
 
         print("Đang tổ chức dữ liệu...")
         for folder in ['0', '1']:
-            src_path = os.path.join(self.imgs_path, folder)
+            src_path = join_paths(self.imgs_path, folder)
             for filename in os.listdir(src_path):
-                shutil.move(os.path.join(src_path, filename), self.imgs_path)
+                shutil.move(join_paths(src_path, filename), self.imgs_path)
 
             shutil.rmtree(src_path)
         print("Hoàn thành")
 
     def store_image_info(self) -> pd.DataFrame:
-        if not os.path.exists(self.docs_path):
-            os.makedirs(self.docs_path)
-
-        data_info_path = os.path.join(self.docs_path, 'data_info.csv')
+        ensure_dir(self.docs_path)
+        data_info_path = join_paths(self.docs_path, 'data_info.csv')
+        
         if os.path.isfile(data_info_path):
             print("Thông tin hình ảnh đã tồn tại. Đang đọc...")
             results_df = pd.read_csv(data_info_path)
@@ -71,17 +70,14 @@ class Preparator:
             return results_df
 
         all_imgs = os.listdir(self.imgs_path)
-
         columns_df = ['path', 'width', 'height', 'area', 'aspect_ratio']
         imgs_df = pd.DataFrame(columns=columns_df)
 
         print("Đang lưu thông tin hình ảnh...")
         for im_name in tqdm(all_imgs):
-            im_path = os.path.join(self.imgs_path, im_name)
-
+            im_path = join_paths(self.imgs_path, im_name)
             im = Image.open(im_path)
             w, h = im.size
-
             new_df = pd.DataFrame([[im_path, w, h, w * h, w / h]], columns=columns_df)
             
             if imgs_df.empty:
@@ -90,18 +86,15 @@ class Preparator:
                 imgs_df = pd.concat([imgs_df, new_df])
 
         result_df = imgs_df.reset_index(drop=True)
-
         result_df.to_csv(data_info_path, index=False)
-
         print("Hoàn thành.")
-
-        return imgs_df.reset_index(drop=True)
+        return result_df
 
     def create_report(self):
         if not os.path.exists(self.docs_path):
             os.makedirs(self.docs_path)
 
-        data_report_path = os.path.join(self.docs_path, 'data_report.html')
+        data_report_path = join_paths(self.docs_path, 'data_report.html')
         if os.path.isfile(data_report_path):
             print("Báo cáo đã được tạo trước đó.")
             return
@@ -112,14 +105,14 @@ class Preparator:
         highest_resolution = areas_sorted.iloc[0][['width', 'height']].values
         lowest_resolution = areas_sorted.iloc[-1][['width', 'height']].values
 
-        plot_path1 = os.path.join(self.docs_path, 'area_distrib.png')
+        plot_path1 = join_paths(self.docs_path, 'area_distrib.png')
         sns_plot = sns.displot(self.im_df, x="aspect_ratio", kde=True).set(title="Phân phối tỷ lệ khung hình")
         sns_plot.map(specs, 'aspect_ratio')
         plt.legend()
         sns_plot.savefig(plot_path1)
         plt.close(sns_plot.fig)
 
-        plot_path2 = os.path.join(self.docs_path, 'width_height_distrib.png')
+        plot_path2 = join_paths(self.docs_path, 'width_height_distrib.png')
         sns_plot = sns.jointplot(x='width', y='height', data=self.im_df)
         plt.suptitle("Phân phối chiều rộng và chiều cao")
         sns_plot.savefig(plot_path2)
@@ -127,7 +120,7 @@ class Preparator:
 
         random_imgs = np.random.choice(self.im_df['path'], size=5, replace=False)
 
-        plot_path3 = os.path.join(self.docs_path, 'images.png')
+        plot_path3 = join_paths(self.docs_path, 'images.png')
         fig, axes = plt.subplots(1, 5, figsize=(12, 6))
         for i, im_path in enumerate(random_imgs):
             im = Image.open(im_path)

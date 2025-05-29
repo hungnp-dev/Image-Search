@@ -4,12 +4,18 @@ from utils.search import Text2Img
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from src.schemas import SearchText
+from utils.path_utils import join_paths, ensure_dir, convert_path_for_url, get_file_name
+import os
 
 app = FastAPI()
 
-app.mount("/images", StaticFiles(directory="images"), name="images")
+# Sử dụng đường dẫn tương đối từ thư mục hiện tại
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMAGES_DIR = ensure_dir(join_paths(BASE_DIR, "images"))
+TEMPLATES_DIR = join_paths(BASE_DIR, "templates")
 
-templates = Jinja2Templates(directory='templates')
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 text2img = Text2Img()
 
@@ -27,8 +33,9 @@ async def create_item(request: Request):
 
         results = text2img.search(text=search_text.text)
 
+        # Xử lý đường dẫn cho URL
         context = {
-            'names': [res['path'].replace('\\', '/').split('/')[-1] for res in results],
+            'names': [get_file_name(convert_path_for_url(res['path'])) for res in results],
             'request': request
         }
 

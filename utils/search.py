@@ -3,6 +3,7 @@ from tqdm import tqdm
 from typing import List, Dict, Tuple, Set
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
+from .path_utils import normalize_path
 
 class Text2Img:
     def __init__(self, collection_name: str = 'images'):
@@ -19,7 +20,7 @@ class Text2Img:
             with_payload=True,
             limit=5,
         )
-        payloads = [hit.payload for hit in search_result]
+        payloads = [{'path': normalize_path(hit.payload['path'])} for hit in search_result]
         return payloads
 
     def avg_precision_at_k(self, test_dataset: List[str], k: int = 5) -> Tuple[float, Dict[str, Set[str]]]:
@@ -52,7 +53,7 @@ class Text2Img:
 
             mask = np.isin(list(common_indexes), list(knn_ids))
             common_results = np.array(knn_result)[mask]
-            common_images = [res.payload['path'] for res in common_results]
+            common_images = [normalize_path(res.payload['path']) for res in common_results]
             common_images_mapping[item] = set(common_images)
 
             precision = len(common_indexes) / k

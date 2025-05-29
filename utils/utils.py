@@ -15,12 +15,13 @@ from qdrant_client.models import VectorParams, Distance
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 from zipfile import ZipFile
+from .path_utils import join_paths, ensure_dir, normalize_path, get_file_name
 
 tqdm.pandas()
 
 def read_txt(path: str) -> List[str]:
     data = []
-    with open(path, 'r') as file:
+    with open(normalize_path(path), 'r') as file:
         for line in file:
             data.append(line.strip())
     return data
@@ -31,7 +32,7 @@ def download_and_extract(url: str, extract_to: str = '.'):
         with open(local_filename, 'wb') as f:
             shutil.copyfileobj(r.raw, f)
     with ZipFile(local_filename, 'r') as zip_ref:
-        zip_ref.extractall(extract_to)
+        zip_ref.extractall(normalize_path(extract_to))
     os.remove(local_filename)
 
 def specs(x, **kwargs):
@@ -44,8 +45,8 @@ def zip_files(filenames: List[Dict[str, str]]) -> Response:
     zf = zipfile.ZipFile(s, "w")
 
     for entry in filenames:
-        fpath = entry['path']
-        fdir, fname = os.path.split(fpath)
+        fpath = normalize_path(entry['path'])
+        fname = get_file_name(fpath)
         zf.write(fpath, fname)
 
     zf.close()
@@ -58,7 +59,7 @@ def zip_files(filenames: List[Dict[str, str]]) -> Response:
 
 def calculate_embedding(model, image_path: str) -> Optional[List[float]]:
     try:
-        image = Image.open(image_path)
+        image = Image.open(normalize_path(image_path))
         encoded_im = model.encode(image).tolist()
         image.close()
         return encoded_im
@@ -69,14 +70,12 @@ def calculate_embedding(model, image_path: str) -> Optional[List[float]]:
 
 def build_image_embeddings(df: pd.DataFrame, save_path: str = 'resources'):
     embeddings_file = "images_embeddings.parquet"
-    embeddings_path = os.path.join(save_path, embeddings_file)
+    embeddings_path = join_paths(save_path, embeddings_file)
 
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    else:
-        if os.path.isfile(embeddings_path):
-            print("Vector đặc trưng đã được tạo")
-            return
+    ensure_dir(save_path)
+    if os.path.isfile(embeddings_path):
+        print("Vector đặc trưng đã được tạo")
+        return
 
     print("Đang xây dựng vector đặc trưng cho hình ảnh...")
 
@@ -104,7 +103,7 @@ def update_db_collection(collection_name: str = 'images',
                          vectors_dir_path: str = 'resources',
                          m: int = 16,
                          ef_construct: int = 100):
-    embeddings_path = os.path.join(vectors_dir_path, "images_embeddings.parquet")
+    embeddings_path = join_paths(vectors_dir_path, "images_embeddings.parquet")
     if not os.path.isfile(embeddings_path):
         print("Vector đặc trưng không có trong thư mục bạn đã chỉ định hoặc chưa được tạo!")
         return
@@ -114,29 +113,66 @@ def update_db_collection(collection_name: str = 'images',
     im_df = pd.read_parquet(embeddings_path)
     print(f"Có {len(im_df)} hình ảnh.")
 
-    paths = im_df['path'].values
-    payloads = iter([{'path': p} for p in paths])
-    vectors = iter(list(map(list, im_df["embedding"].tolist())))
-
+    # Chuyển dữ liệu thành list để dễ xử lý
+    paths = [normalize_path(p) for p in im_df['path'].values.tolist()]
+    vectors = list(map(list, im_df["embedding"].tolist()))
+    
     print("Đang đưa vector đặc trưng vào collection Qdrant...")
 
-    qdrant_client.recreate_collection(
+    # Xóa collection cũ nếu tồn tại
+    try:
+        qdrant_client.delete_collection(collection_name=collection_name)
+        print("Đã xóa collection cũ")
+    except:
+        print("Không có collection cũ để xóa")
+
+    # Tạo collection mới với cấu hình tối ưu
+    qdrant_client.create_collection(
         collection_name=collection_name,
-        vectors_config=VectorParams(size=512, distance=Distance.COSINE),
+        vectors_config=VectorParams(
+            size=512,
+            distance=Distance.COSINE
+        ),
+        hnsw_config=models.HnswConfigDiff(
+            m=m,
+            ef_construct=ef_construct
+        ),
+        optimizers_config=models.OptimizersConfigDiff(
+            default_segment_number=2
+        ),
+        on_disk_payload=True  # Lưu payload trên đĩa để tiết kiệm RAM
     )
+    print("Đã tạo collection mới")
 
-    qdrant_client.upload_collection(
-        collection_name=collection_name,
-        vectors=vectors,
-        payload=payloads,
-        ids=None,
-        batch_size=256
-    )
+    # Upload vectors theo batch nhỏ
+    batch_size = 100  # Batch size nhỏ hơn để tránh quá tải
+    total_batches = len(vectors) // batch_size + (1 if len(vectors) % batch_size != 0 else 0)
+    
+    print(f"Bắt đầu upload {len(vectors)} vectors theo {total_batches} batches...")
+    
+    for i in range(0, len(vectors), batch_size):
+        batch_vectors = vectors[i:i + batch_size]
+        batch_payloads = [{'path': p} for p in paths[i:i + batch_size]]
+        batch_ids = list(range(i, min(i + batch_size, len(vectors))))
+        
+        try:
+            qdrant_client.upsert(
+                collection_name=collection_name,
+                points=models.Batch(
+                    ids=batch_ids,
+                    vectors=batch_vectors,
+                    payloads=batch_payloads
+                )
+            )
+            print(f"Đã upload batch {i//batch_size + 1}/{total_batches}")
+        except Exception as e:
+            print(f"Lỗi khi upload batch {i//batch_size + 1}: {str(e)}")
+            continue
 
-    while True:
-        collection_info = qdrant_client.get_collection(collection_name=collection_name)
-        if collection_info.status == models.CollectionStatus.GREEN:
-            break
-
-    print(f"Có {qdrant_client.count(collection_name)} điểm đã được tạo "
-          f"trong collection Qdrant có tên '{collection_name}'")
+    # Kiểm tra kết quả
+    try:
+        count_info = qdrant_client.count(collection_name=collection_name)
+        print(f"Hoàn thành! Đã tạo collection '{collection_name}' với {count_info.count} vectors")
+    except Exception as e:
+        print(f"Không thể kiểm tra số lượng vectors: {str(e)}")
+        print("Nhưng quá trình upload đã hoàn tất")

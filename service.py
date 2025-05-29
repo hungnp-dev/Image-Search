@@ -39,7 +39,7 @@ async def create_item(request: Request):
             'request': request
         }
 
-        return templates.TemplateResponse(request=request, name='images_template.html', context=context)
+        return templates.TemplateResponse(name='images_template.html', context=context)
 
     except ValueError as e:
         context = {

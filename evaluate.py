@@ -13,7 +13,7 @@ if __name__ == '__main__':
     text2img = Text2Img()
     test_dataset = read_txt(path=labels_filepath)
     accuracy, mapping = text2img.avg_precision_at_k(test_dataset, k=5)
-    print(f"For the queries provided, the accuracy of the system is {accuracy}.")
-    print("Mapping between classes defined in labels file and common images retrieved by both ANN and kNN")
+    print(f"Đối với các truy vấn đã cung cấp, độ chính xác của hệ thống là {accuracy}.")
+    print("Ánh xạ giữa các lớp được định nghĩa trong tệp nhãn và các hình ảnh phổ biến được truy xuất bởi cả ANN và kNN")
     for class_name, images in mapping.items():
         print(f"{class_name}: \n {images}")

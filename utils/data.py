@@ -105,16 +105,16 @@ class Preparator:
         highest_resolution = areas_sorted.iloc[0][['width', 'height']].values
         lowest_resolution = areas_sorted.iloc[-1][['width', 'height']].values
 
-        plot_path1 = join_paths(self.docs_path, 'area_distrib.png')
-        sns_plot = sns.displot(self.im_df, x="aspect_ratio", kde=True).set(title="Phân phối tỷ lệ khung hình")
+        plot_path1 = join_paths(self.docs_path, 'ty_le_khung_hinh.png')
+        sns_plot = sns.displot(self.im_df, x="aspect_ratio", kde=True).set(title="TỶ LÊ KHUNG HÌNH")
         sns_plot.map(specs, 'aspect_ratio')
         plt.legend()
         sns_plot.savefig(plot_path1)
         plt.close(sns_plot.fig)
 
-        plot_path2 = join_paths(self.docs_path, 'width_height_distrib.png')
+        plot_path2 = join_paths(self.docs_path, 'chieu_rong_chieu_cao.png')
         sns_plot = sns.jointplot(x='width', y='height', data=self.im_df)
-        plt.suptitle("Phân phối chiều rộng và chiều cao")
+        plt.suptitle("CHIỀU RỘNG VÀ CHIỀU CAO")
         sns_plot.savefig(plot_path2)
         plt.close(sns_plot.fig)
 
